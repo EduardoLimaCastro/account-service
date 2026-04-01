@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+
+  postgres:
+    image: postgres:15
+    container_name: account-service-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: account_service
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - account-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d account_service"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  account-service:
+    container_name: account-service
+    restart: unless-stopped
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8081:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/account_service
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: password
+    networks:
+      - account-network
+
+volumes:
+    postgres_data:
+
+networks:
+    account-network:
