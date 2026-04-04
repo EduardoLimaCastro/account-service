@@ -5,7 +5,9 @@ import com.eduardo.account_service.domain.enums.AccountType;
 import com.eduardo.account_service.domain.exceptions.InvalidAccountStateTransitionException;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.Objects;
 import java.util.UUID;
 
 public class Account {
@@ -28,6 +30,7 @@ public class Account {
     private Long version;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private final Clock clock;
 
     // =========================
     // Constructor
@@ -47,7 +50,8 @@ public class Account {
             boolean fraudBlocked,
             Long version,
             LocalDateTime createdAt,
-            LocalDateTime updatedAt
+            LocalDateTime updatedAt,
+            Clock clock
     ) {
         this.id = id;
         this.ownerId = ownerId;
@@ -63,6 +67,7 @@ public class Account {
         this.version = version;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.clock = clock;
     }
 
     // =========================
@@ -76,8 +81,10 @@ public class Account {
             BigDecimal balance,
             BigDecimal overdraftLimit,
             BigDecimal transferLimit,
-            AccountType accountType
+            AccountType accountType,
+            Clock clock
     ){
+        LocalDateTime now = LocalDateTime.now(clock);
         return new Account(
                 UUID.randomUUID(),
                 ownerId,
@@ -91,8 +98,9 @@ public class Account {
                 accountType,
                 false,
                 null,
-                LocalDateTime.now(),
-                LocalDateTime.now()
+                now,
+                now,
+                clock
         );
     }
 
@@ -110,9 +118,9 @@ public class Account {
             boolean fraudBlocked,
             LocalDateTime createdAt,
             LocalDateTime updatedAt,
-            Long version
+            Long version,
+            Clock clock
     ) {
-
         return new Account(
                 id,
                 ownerId,
@@ -127,7 +135,8 @@ public class Account {
                 fraudBlocked,
                 version,
                 createdAt,
-                updatedAt
+                updatedAt,
+                clock
         );
     }
 
@@ -180,6 +189,33 @@ public class Account {
             throw new IllegalStateException("Only active accounts can perform transfers.");
         }
     }
+    public void update(
+            String ownerId,
+            String accountNumber,
+            String accountDigit,
+            String agencyId,
+            AccountStatus status,
+            BigDecimal balance,
+            BigDecimal overdraftLimit,
+            BigDecimal transferLimit,
+            AccountType accountType,
+            boolean fraudBlocked
+    ) {
+        this.ownerId = ownerId;
+        this.accountNumber = accountNumber;
+        this.accountDigit = accountDigit;
+        this.agencyId = agencyId;
+        if (!this.status.equals(status)) {
+            changeStatus(status);
+        }
+        this.balance = balance;
+        this.overdraftLimit = overdraftLimit;
+        this.transferLimit = transferLimit;
+        this.accountType = accountType;
+        this.fraudBlocked = fraudBlocked;
+        touch();
+    }
+
     public void blockForFraud() {
         this.fraudBlocked = true;
     }
@@ -199,8 +235,25 @@ public class Account {
         touch();
     }
     private void touch() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now(this.clock);
     }
+
+    // =========================
+    // Identity
+    // =========================
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Account other)) return false;
+        return Objects.equals(id, other.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(id);
+    }
+
     // =========================
     // Getters
     // =========================
@@ -219,4 +272,5 @@ public class Account {
     public LocalDateTime getCreatedAt() {return createdAt;}
     public LocalDateTime getUpdatedAt() {return updatedAt;}
     public Long getVersion() {return version;}
+    public Clock getClock() {return clock;}
 }

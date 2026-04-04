@@ -1,0 +1,153 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-04-04T00:00:00.000Z",
+  "__export_source": "insomnia.desktop.app:v9",
+  "resources": [
+    {
+      "_id": "wrk_account_service",
+      "_type": "workspace",
+      "name": "Account Service",
+      "description": "Fintech Account Service API",
+      "scope": "collection"
+    },
+    {
+      "_id": "env_base",
+      "_type": "environment",
+      "parentId": "wrk_account_service",
+      "name": "Base Environment",
+      "data": {
+        "base_url": "http://localhost:8011",
+        "account_id": "00000000-0000-0000-0000-000000000000"
+      }
+    },
+    {
+      "_id": "fld_accounts",
+      "_type": "request_group",
+      "parentId": "wrk_account_service",
+      "name": "Accounts"
+    },
+    {
+      "_id": "req_create_account",
+      "_type": "request",
+      "parentId": "fld_accounts",
+      "name": "Create Account",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/accounts",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"ownerId\": \"user-001\",\n  \"accountDigit\": \"1\",\n  \"agencyId\": \"agency-001\",\n  \"balance\": 1000.00,\n  \"overdraftLimit\": 500.00,\n  \"transferLimit\": 2000.00,\n  \"accountType\": \"PERSONAL\"\n}"
+      }
+    },
+    {
+      "_id": "req_list_accounts",
+      "_type": "request",
+      "parentId": "fld_accounts",
+      "name": "List Accounts",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/accounts",
+      "parameters": [
+        {
+          "name": "accountNumber",
+          "value": "",
+          "disabled": true
+        },
+        {
+          "name": "accountType",
+          "value": "PERSONAL",
+          "disabled": true
+        },
+        {
+          "name": "accountStatus",
+          "value": "ACTIVE",
+          "disabled": true
+        },
+        {
+          "name": "page",
+          "value": "0",
+          "disabled": true
+        },
+        {
+          "name": "size",
+          "value": "20",
+          "disabled": true
+        },
+        {
+          "name": "sort",
+          "value": "createdAt,desc",
+          "disabled": true
+        }
+      ]
+    },
+    {
+      "_id": "req_find_account_by_id",
+      "_type": "request",
+      "parentId": "fld_accounts",
+      "name": "Find Account by ID",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/accounts/{{ _.account_id }}"
+    },
+    {
+      "_id": "req_update_account",
+      "_type": "request",
+      "parentId": "fld_accounts",
+      "name": "Update Account",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/accounts/{{ _.account_id }}",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"ownerId\": \"user-001\",\n  \"accountNumber\": \"123456789\",\n  \"accountDigit\": \"1\",\n  \"agencyId\": \"agency-001\",\n  \"status\": \"ACTIVE\",\n  \"balance\": 1500.00,\n  \"overdraftLimit\": 500.00,\n  \"transferLimit\": 3000.00,\n  \"accountType\": \"PERSONAL\",\n  \"fraudBlocked\": false\n}"
+      }
+    },
+    {
+      "_id": "req_delete_account",
+      "_type": "request",
+      "parentId": "fld_accounts",
+      "name": "Delete Account",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/api/accounts/{{ _.account_id }}"
+    },
+    {
+      "_id": "fld_status",
+      "_type": "request_group",
+      "parentId": "wrk_account_service",
+      "name": "Account Status Transitions"
+    },
+    {
+      "_id": "req_activate_account",
+      "_type": "request",
+      "parentId": "fld_status",
+      "name": "Activate Account",
+      "method": "PATCH",
+      "url": "{{ _.base_url }}/api/accounts/{{ _.account_id }}/activate"
+    },
+    {
+      "_id": "req_block_account",
+      "_type": "request",
+      "parentId": "fld_status",
+      "name": "Block Account",
+      "method": "PATCH",
+      "url": "{{ _.base_url }}/api/accounts/{{ _.account_id }}/block"
+    },
+    {
+      "_id": "req_close_account",
+      "_type": "request",
+      "parentId": "fld_status",
+      "name": "Close Account",
+      "method": "PATCH",
+      "url": "{{ _.base_url }}/api/accounts/{{ _.account_id }}/close"
+    }
+  ]
+}
