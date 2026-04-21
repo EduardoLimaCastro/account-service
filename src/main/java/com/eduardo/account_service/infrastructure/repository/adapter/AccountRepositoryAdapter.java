@@ -7,12 +7,12 @@ import com.eduardo.account_service.infrastructure.repository.jpa.AccountJpaRepos
 import com.eduardo.account_service.infrastructure.repository.jpa.AccountSpecification;
 import com.eduardo.account_service.infrastructure.repository.mapper.AccountJpaMapper;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.time.Clock;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -20,31 +20,40 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AccountRepositoryAdapter implements AccountRepositoryPort {
 
+    private static final Logger log = LoggerFactory.getLogger(AccountRepositoryAdapter.class);
+
     private final AccountJpaRepository jpaRepository;
-    private final Clock clock;
 
     @Override
     public Account save(Account account) {
-        return AccountJpaMapper.toDomain(jpaRepository.save(AccountJpaMapper.toEntity(account)), clock);
+        log.debug("Persisting account id: {}", account.getId());
+        Account saved = AccountJpaMapper.toDomain(jpaRepository.save(AccountJpaMapper.toEntity(account)));
+        log.debug("Account id: {} persisted", saved.getId());
+        return saved;
     }
 
     @Override
     public Page<Account> list(AccountFilter filter, Pageable pageable) {
-       return jpaRepository.findAll(AccountSpecification.withFilter(filter), pageable)
-               .map(e -> AccountJpaMapper.toDomain(e, clock));
+        log.debug("Querying accounts — filter: {}, pageable: {}", filter, pageable);
+        return jpaRepository.findAll(AccountSpecification.withFilter(filter), pageable)
+                .map(AccountJpaMapper::toDomain);
     }
 
     @Override
     public Optional<Account> findById(UUID id) {
-        return jpaRepository.findById(id)
-                .map(e -> AccountJpaMapper.toDomain(e, clock));
+        log.debug("Querying account by id: {}", id);
+        return jpaRepository.findById(id).map(AccountJpaMapper::toDomain);
     }
 
     @Override
-    public boolean existsByAccountNumber(String accountNumber) {
-        return jpaRepository.existsByAccountNumber(accountNumber);
+    public boolean existsById(UUID id) {
+        log.debug("Checking existence of account id: {}", id);
+        return jpaRepository.existsById(id);
     }
 
     @Override
-    public void deleteById(UUID id) { jpaRepository.deleteById(id); }
+    public void deleteById(UUID id) {
+        log.debug("Deleting account id: {} from database", id);
+        jpaRepository.deleteById(id);
+    }
 }

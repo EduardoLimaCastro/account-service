@@ -13,7 +13,7 @@ public class AccountSpecification {
 
     private static final String FIELD_ACCOUNT_NUMBER = "accountNumber";
     private static final String FIELD_ACCOUNT_TYPE = "accountType";
-    private static final String FIELD_ACCOUNT_STATUS = "accountStatus";
+    private static final String FIELD_ACCOUNT_STATUS = "status";
 
     public static Specification<AccountJpaEntity> withFilter(AccountFilter filter) {
         return (root, query, cb) -> {

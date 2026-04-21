@@ -30,7 +30,6 @@ public class Account {
     private Long version;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private final Clock clock;
 
     // =========================
     // Constructor
@@ -50,8 +49,7 @@ public class Account {
             boolean fraudBlocked,
             Long version,
             LocalDateTime createdAt,
-            LocalDateTime updatedAt,
-            Clock clock
+            LocalDateTime updatedAt
     ) {
         this.id = id;
         this.ownerId = ownerId;
@@ -67,7 +65,6 @@ public class Account {
         this.version = version;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
-        this.clock = clock;
     }
 
     // =========================
@@ -83,7 +80,7 @@ public class Account {
             BigDecimal transferLimit,
             AccountType accountType,
             Clock clock
-    ){
+    ) {
         LocalDateTime now = LocalDateTime.now(clock);
         return new Account(
                 UUID.randomUUID(),
@@ -99,8 +96,7 @@ public class Account {
                 false,
                 null,
                 now,
-                now,
-                clock
+                now
         );
     }
 
@@ -118,8 +114,7 @@ public class Account {
             boolean fraudBlocked,
             LocalDateTime createdAt,
             LocalDateTime updatedAt,
-            Long version,
-            Clock clock
+            Long version
     ) {
         return new Account(
                 id,
@@ -135,8 +130,7 @@ public class Account {
                 fraudBlocked,
                 version,
                 createdAt,
-                updatedAt,
-                clock
+                updatedAt
         );
     }
 
@@ -144,98 +138,100 @@ public class Account {
     // Domain Behavior
     // =========================
 
-    public void activate() {
-        changeStatus(AccountStatus.ACTIVE);
+    public void activate(Clock clock) {
+        changeStatus(AccountStatus.ACTIVE, clock);
     }
-    public void block() {
-        changeStatus(AccountStatus.BLOCKED);
+
+    public void block(Clock clock) {
+        changeStatus(AccountStatus.BLOCKED, clock);
     }
-    public void close() {
-        changeStatus(AccountStatus.CLOSED);
+
+    public void close(Clock clock) {
+        changeStatus(AccountStatus.CLOSED, clock);
     }
-    public void deposit(BigDecimal amount) {
+
+    public void deposit(BigDecimal amount, Clock clock) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0)
             throw new IllegalArgumentException("Amount must be positive.");
-        if(status.equals(AccountStatus.ACTIVE)) {
-            this.balance = this.balance.add(amount);
-            touch();
-        } else {
+        if (fraudBlocked)
+            throw new IllegalStateException("Account is blocked due to fraud.");
+        if (!status.equals(AccountStatus.ACTIVE))
             throw new IllegalStateException("Only active accounts can receive deposits.");
-        }
+        this.balance = this.balance.add(amount);
+        touch(clock);
     }
-    public void withdraw(BigDecimal amount) {
+
+    public void withdraw(BigDecimal amount, Clock clock) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0)
             throw new IllegalArgumentException("Amount must be positive.");
-        if(status.equals(AccountStatus.ACTIVE)) {
-            BigDecimal availableFunds = this.balance.add(this.overdraftLimit);
-            if (availableFunds.compareTo(amount) >= 0) {
-                this.balance = this.balance.subtract(amount);
-                touch();
-            } else {
-                throw new IllegalStateException("Insufficient funds for withdrawal.");
-            }
-        } else {
+        if (fraudBlocked)
+            throw new IllegalStateException("Account is blocked due to fraud.");
+        if (!status.equals(AccountStatus.ACTIVE))
             throw new IllegalStateException("Only active accounts can perform withdrawals.");
-        }
+        BigDecimal availableFunds = this.balance.add(this.overdraftLimit);
+        if (availableFunds.compareTo(amount) < 0)
+            throw new IllegalStateException("Insufficient funds for withdrawal.");
+        this.balance = this.balance.subtract(amount);
+        touch(clock);
     }
-    public void transferFunds(BigDecimal amount) {
-        if(status.equals(AccountStatus.ACTIVE)) {
-            if (amount.compareTo(this.transferLimit) <= 0) {
-                withdraw(amount);
-            } else {
-                throw new IllegalStateException("Transfer amount exceeds the transfer limit.");
-            }
-        } else {
+
+    public void transferFunds(BigDecimal amount, Clock clock) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0)
+            throw new IllegalArgumentException("Amount must be positive.");
+        if (fraudBlocked)
+            throw new IllegalStateException("Account is blocked due to fraud.");
+        if (!status.equals(AccountStatus.ACTIVE))
             throw new IllegalStateException("Only active accounts can perform transfers.");
-        }
+        if (amount.compareTo(this.transferLimit) > 0)
+            throw new IllegalStateException("Transfer amount exceeds the transfer limit.");
+        withdraw(amount, clock);
     }
+
     public void update(
             String ownerId,
-            String accountNumber,
             String accountDigit,
             String agencyId,
-            AccountStatus status,
-            BigDecimal balance,
+            AccountStatus newStatus,
             BigDecimal overdraftLimit,
             BigDecimal transferLimit,
             AccountType accountType,
-            boolean fraudBlocked
+            boolean fraudBlocked,
+            Clock clock
     ) {
         this.ownerId = ownerId;
-        this.accountNumber = accountNumber;
         this.accountDigit = accountDigit;
         this.agencyId = agencyId;
-        if (!this.status.equals(status)) {
-            changeStatus(status);
-        }
-        this.balance = balance;
         this.overdraftLimit = overdraftLimit;
         this.transferLimit = transferLimit;
         this.accountType = accountType;
         this.fraudBlocked = fraudBlocked;
-        touch();
-    }
-
-    public void blockForFraud() {
-        this.fraudBlocked = true;
-    }
-    public void unblockForFraud() {
-        this.fraudBlocked = false;
-    }
-    public void changeStatus(AccountStatus newStatus) {
-        if (!this.status.canTransitionTo(newStatus)) {
-            throw new InvalidAccountStateTransitionException(
-                    this.id,
-                    this.status,
-                    newStatus
-            );
+        if (!this.status.equals(newStatus)) {
+            changeStatus(newStatus, clock); // touch() already called inside
+        } else {
+            touch(clock);
         }
-
-        this.status = newStatus;
-        touch();
     }
-    private void touch() {
-        this.updatedAt = LocalDateTime.now(this.clock);
+
+    public void blockForFraud(Clock clock) {
+        this.fraudBlocked = true;
+        touch(clock);
+    }
+
+    public void unblockForFraud(Clock clock) {
+        this.fraudBlocked = false;
+        touch(clock);
+    }
+
+    public void changeStatus(AccountStatus newStatus, Clock clock) {
+        if (!this.status.canTransitionTo(newStatus)) {
+            throw new InvalidAccountStateTransitionException(this.id, this.status, newStatus);
+        }
+        this.status = newStatus;
+        touch(clock);
+    }
+
+    private void touch(Clock clock) {
+        this.updatedAt = LocalDateTime.now(clock);
     }
 
     // =========================
@@ -258,19 +254,18 @@ public class Account {
     // Getters
     // =========================
 
-    public UUID getId() {return id;}
-    public String getOwnerId() {return ownerId;}
-    public String getAccountNumber() {return accountNumber;}
-    public String getAccountDigit() {return accountDigit;}
-    public String getAgencyId() {return agencyId;}
-    public AccountStatus getStatus() {return status;}
-    public BigDecimal getBalance() {return balance;}
-    public BigDecimal getOverdraftLimit() {return overdraftLimit;}
-    public BigDecimal getTransferLimit() {return transferLimit;}
-    public AccountType getAccountType() {return accountType;}
-    public boolean isFraudBlocked() {return fraudBlocked;}
-    public LocalDateTime getCreatedAt() {return createdAt;}
-    public LocalDateTime getUpdatedAt() {return updatedAt;}
-    public Long getVersion() {return version;}
-    public Clock getClock() {return clock;}
+    public UUID getId() { return id; }
+    public String getOwnerId() { return ownerId; }
+    public String getAccountNumber() { return accountNumber; }
+    public String getAccountDigit() { return accountDigit; }
+    public String getAgencyId() { return agencyId; }
+    public AccountStatus getStatus() { return status; }
+    public BigDecimal getBalance() { return balance; }
+    public BigDecimal getOverdraftLimit() { return overdraftLimit; }
+    public BigDecimal getTransferLimit() { return transferLimit; }
+    public AccountType getAccountType() { return accountType; }
+    public boolean isFraudBlocked() { return fraudBlocked; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public Long getVersion() { return version; }
 }

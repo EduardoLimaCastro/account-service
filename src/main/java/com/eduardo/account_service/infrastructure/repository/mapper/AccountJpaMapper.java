@@ -3,8 +3,6 @@ package com.eduardo.account_service.infrastructure.repository.mapper;
 import com.eduardo.account_service.domain.model.Account;
 import com.eduardo.account_service.infrastructure.repository.jpa.AccountJpaEntity;
 
-import java.time.Clock;
-
 public class AccountJpaMapper {
 
     private AccountJpaMapper() {}
@@ -27,7 +25,7 @@ public class AccountJpaMapper {
         );
     }
 
-    public static Account toDomain(AccountJpaEntity entity, Clock clock) {
+    public static Account toDomain(AccountJpaEntity entity) {
         return Account.reconstitute(
                 entity.getId(),
                 entity.getOwnerId(),
@@ -42,8 +40,7 @@ public class AccountJpaMapper {
                 entity.isFraudBlocked(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt(),
-                entity.getVersion(),
-                clock
+                entity.getVersion()
         );
     }
 }

@@ -18,6 +18,7 @@ public record AccountResponse(
         BigDecimal overdraftLimit,
         BigDecimal transferLimit,
         AccountType accountType,
+        boolean fraudBlocked,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {}

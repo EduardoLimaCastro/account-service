@@ -35,6 +35,7 @@ public class AccountMapper {
                 account.getOverdraftLimit(),
                 account.getTransferLimit(),
                 account.getAccountType(),
+                account.isFraudBlocked(),
                 account.getCreatedAt(),
                 account.getUpdatedAt()
         );
